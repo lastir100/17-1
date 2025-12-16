@@ -138,6 +138,22 @@ lastir@pmx-netology:~/github/17-1/playbook$ ansible-vault encrypt ./group_vars/e
 New Vault password: 
 Confirm New Vault password: 
 Encryption successful
+lastir@pmx-netology:~/github/17-1/playbook$ cat ./group_vars/deb/examp.yml 
+$ANSIBLE_VAULT;1.1;AES256
+34326662643639306230366533613165643731613733393265333035626162303438653339326239
+3866653939353665313534626264313233626334363332310a336662636431313736393636336431
+61326434653365336634363630383030333561316631633362646364306339306132656261353830
+6132373634383039300a303136333936386338313836383239303862376435306632396363346634
+31656438313933633764323263343662346362306233356563626230366436613533643634383732
+3131383731646139396332346338393632303532383434396139
+lastir@pmx-netology:~/github/17-1/playbook$ cat ./group_vars/el/examp.yml 
+$ANSIBLE_VAULT;1.1;AES256
+36653931383561356166366163363935346532343736343338326333333437353732303665646232
+3531336164353034636632376165623539656333396438660a306562343162383438373738313532
+66653262306536633532346230663264613361313733633335613434613432343035666164353131
+3363393236346431300a666639626131396563346164623231383438646439326566376133636638
+30343164303133643133376564376534366361653933353637633233376561663663316265613461
+3862313832363837383936396533303163363461336366663537
 ```
 8. 
 ```
@@ -243,6 +259,160 @@ ubuntu                     : ok=3    changed=0    unreachable=0    failed=0    s
 4. Добавьте новую группу хостов `fedora`, самостоятельно придумайте для неё переменную. В качестве образа можно использовать [этот вариант](https://hub.docker.com/r/pycontribs/fedora).
 5. Напишите скрипт на bash: автоматизируйте поднятие необходимых контейнеров, запуск ansible-playbook и остановку контейнеров.
 6. Все изменения должны быть зафиксированы и отправлены в ваш личный репозиторий.
+
+## Ответы. Необязательная часть
+1. 
+```
+lastir@pmx-netology:~/github/17-1/playbook$ ansible-vault decrypt ./group_vars/deb/examp.yml 
+Vault password: 
+Decryption successful
+lastir@pmx-netology:~/github/17-1/playbook$ ansible-vault decrypt ./group_vars/el/examp.yml 
+Vault password: 
+Decryption successful
+```
+2. 
+```lastir@pmx-netology:~/github/17-1/playbook$ ansible-vault encrypt_string
+New Vault password: 
+Confirm New Vault password: 
+Reading plaintext input from stdin. (ctrl-d to end input, twice if your content does not already have a newline)
+PaSSw0rd
+Encryption successful
+!vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          31646232336333313333613334666164616465306361333938613739656630663463643331303739
+          3261333830323263373433666431363636383561613539300a333335313730333766346333653665
+          66366233616436326337313233663765373832323265343532366536393430623762666533323062
+          6162353965656230620a353062363233343437336432633936633931346536636266353339626335
+          3732
+lastir@pmx-netology:~/github/17-1/playbook$ cat ./group_vars/all/examp.yml 
+---
+  some_fact: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          31646232336333313333613334666164616465306361333938613739656630663463643331303739
+          3261333830323263373433666431363636383561613539300a333335313730333766346333653665
+          66366233616436326337313233663765373832323265343532366536393430623762666533323062
+          6162353965656230620a353062363233343437336432633936633931346536636266353339626335
+          3732lastir@pmx-netology:~/github/17-1/playbook$ 
+```
+3. 
+```
+lastir@pmx-netology:~/github/17-1/playbook$ ansible-playbook -i ./inventory/prod.yml ./site.yml --ask-vault-pass
+Vault password: 
+
+PLAY [Print os facts] *************************************************************************************************************************************************************************************************************************************
+
+TASK [Gathering Facts] ************************************************************************************************************************************************************************************************************************************
+ok: [localhost]
+ok: [centos7]
+ok: [ubuntu]
+
+TASK [Print OS] *******************************************************************************************************************************************************************************************************************************************
+ok: [centos7] => {
+    "msg": "CentOS"
+}
+ok: [ubuntu] => {
+    "msg": "Ubuntu"
+}
+ok: [localhost] => {
+    "msg": "Ubuntu"
+}
+
+TASK [Print fact] *****************************************************************************************************************************************************************************************************************************************
+ok: [centos7] => {
+    "msg": "el default fact"
+}
+ok: [ubuntu] => {
+    "msg": "deb default fact"
+}
+ok: [localhost] => {
+    "msg": "PaSSw0rd"
+}
+
+PLAY RECAP ************************************************************************************************************************************************************************************************************************************************
+centos7                    : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+localhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ubuntu                     : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+lastir@pmx-netology:~/github/17-1/playbook$ 
+```
+4. 
+```
+lastir@pmx-netology:~/github/17-1/playbook$ docker ps
+CONTAINER ID   IMAGE                 COMMAND         CREATED          STATUS          PORTS     NAMES
+e19ccde9e582   pycontribs/fedora     "sleep 10000"   2 minutes ago    Up 2 minutes              fedora
+b67edf4d29ce   pycontribs/centos:8   "sleep 10000"   36 minutes ago   Up 36 minutes             centos7
+3ecdaec88a2c   pycontribs/ubuntu     "sleep 10000"   40 minutes ago   Up 40 minutes             ubuntu
+lastir@pmx-netology:~/github/17-1/playbook$ cat inventory/prod.yml 
+---
+  el:
+    hosts:
+      centos7:
+        ansible_connection: docker
+  deb:
+    hosts:
+      ubuntu:
+        ansible_connection: docker
+  local:
+    hosts:
+      localhost:
+        ansible_connection: ansible.builtin.local
+  fedora:
+    hosts:
+      fedora:
+        ansible_connection: docker
+lastir@pmx-netology:~/github/17-1/playbook$ cat ./group_vars/fedora/examp.yml 
+---
+  some_fact: "fedora"
+lastir@pmx-netology:~/github/17-1/playbook$ ansible-playbook -i ./inventory/prod.yml ./site.yml --ask-vault-pass:wq
+Vault password: 
+[WARNING]: Found both group and host with same name: fedora
+
+PLAY [Print os facts] *************************************************************************************************************************************************************************************************************************************
+
+TASK [Gathering Facts] ************************************************************************************************************************************************************************************************************************************
+ok: [localhost]
+ok: [fedora]
+ok: [centos7]
+ok: [ubuntu]
+
+TASK [Print OS] *******************************************************************************************************************************************************************************************************************************************
+ok: [centos7] => {
+    "msg": "CentOS"
+}
+ok: [ubuntu] => {
+    "msg": "Ubuntu"
+}
+ok: [localhost] => {
+    "msg": "Ubuntu"
+}
+ok: [fedora] => {
+    "msg": "Fedora"
+}
+
+TASK [Print fact] *****************************************************************************************************************************************************************************************************************************************
+ok: [centos7] => {
+    "msg": "el default fact"
+}
+ok: [ubuntu] => {
+    "msg": "deb default fact"
+}
+ok: [fedora] => {
+    "msg": "fedora"
+}
+ok: [localhost] => {
+    "msg": "PaSSw0rd"
+}
+
+PLAY RECAP ************************************************************************************************************************************************************************************************************************************************
+centos7                    : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+fedora                     : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+localhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ubuntu                     : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+lastir@pmx-netology:~/github/17-1/playbook$ 
+
+```
+
 
 ---
 
